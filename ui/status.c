@@ -41,7 +41,7 @@ void UI_DisplayStatus()
 {
 	char time_str[6];
 	const uint8_t TIME_POS_X = 16;  // редактируемая позиция времени (X в пикселях, можно менять)
-	const uint8_t POS_FL = 55;  // Позиция для иконки фонарика (правее "B")
+	const uint8_t POS_FL = 63;  // Позиция для иконки фонарика (правее "B")
 
 	memset(gStatusLine, 0, sizeof(gStatusLine));
 
@@ -49,9 +49,9 @@ void UI_DisplayStatus()
 	const uint8_t POS_TX   = 0;    // начало "TX" при передаче
 	const uint8_t POS_RX   = 0;    // начало "RX" при приёме
 	const uint8_t POS_PS   = 0;    // начало "PS" при Power Save
-	const uint8_t POS_LOCK = 75;   // Замок
-	const uint8_t POS_F    = 75;   // "F"
-	const uint8_t POS_B    = 65;   // "подсветка"
+	const uint8_t POS_LOCK = 81;   // Замок
+	const uint8_t POS_F    = 81;   // "F"
+	const uint8_t POS_B    = 72;   // "подсветка"
 
 		// === Индикаторы TX / RX / PS — мелким шрифтом как у батареи (позиция по POS_...) ===
 	if (gCurrentFunction == FUNCTION_TRANSMIT)
@@ -157,7 +157,7 @@ gStatusLine[POS_B + 14] |= 0x0C;
 	}
 
 
-        /*/ === S-МЕТР В СТАТУСБАРЕ (при приёме) ===
+        // === S-МЕТР В СТАТУСБАРЕ (при приёме) ===
     if (gCurrentFunction == FUNCTION_RECEIVE ||
         gCurrentFunction == FUNCTION_MONITOR ||
         gCurrentFunction == FUNCTION_INCOMING)
@@ -170,7 +170,7 @@ gStatusLine[POS_B + 14] |= 0x0C;
     sprintf(meterStr, "S%d", (sLevelAtt.sLevel >= 9 || sLevelAtt.over > 0) ? 9 : sLevelAtt.sLevel);
 
             // ПОЗИЦИЯ — МЕНЯЙ ЗДЕСЬ
-            unsigned int meter_x = 64;  // ← основная позиция (70 — слева от батареи)
+            unsigned int meter_x = 53;  // ← основная позиция (70 — слева от батареи)
             unsigned int space_needed = 7 * strlen(meterStr);
             unsigned int start_x = meter_x;
 
@@ -179,9 +179,9 @@ gStatusLine[POS_B + 14] |= 0x0C;
                 start_x = LCD_WIDTH - 20 - space_needed;
             }
 
-            UI_PrintStringSmallBuffer(meterStr, gStatusLine + start_x);
+            UI_PrintStringBSmallBuffer(meterStr, gStatusLine + start_x);
         }
-    }*/
+    }
 	// === Battery voltage / percentage ===
 	{
 		char s[8];

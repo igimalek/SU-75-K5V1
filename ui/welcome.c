@@ -90,7 +90,7 @@ void UI_DisplayWelcome(void)
 		UI_PrintString(WelcomeString0, 0, 127, 0, 10);
 		UI_PrintString(WelcomeString1, 0, 127, 2, 10);
 		UI_PrintString(Version, 0, 127, 4,10);
-		GUI_DisplaySmallestDark("ROBZYL'S FORK V6.3", 30, 49, false, false);
+		GUI_DisplaySmallestDark("V.7.3", 55, 49, false, false);
 
 		ST7565_BlitStatusLine();  // blank status line
 		ST7565_BlitFullScreen();

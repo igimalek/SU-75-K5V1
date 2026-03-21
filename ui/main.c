@@ -223,7 +223,7 @@ void DisplayRSSIBar(const int16_t rssi)
         GUI_DisplaySmallestDark(rssiStr, x, y, false, true);
     }
 
-    // S-meter
+    /*/ S-meter
     if (smeterStr[0] != '\0')
     {
         uint8_t y_mr = 2; uint8_t x_mr = 58;
@@ -233,7 +233,7 @@ void DisplayRSSIBar(const int16_t rssi)
         uint8_t x = IS_MR_CHANNEL(gEeprom.ScreenChannel) ? x_mr : x_vfo;
 
         GUI_DisplaySmallestDark(smeterStr, x, y, false, true);
-    }
+    }*/
 
     // СУБТОН — выводим всегда, если есть в gSubtone_String
     if (gSubtone_String[0] != '\0')
@@ -754,12 +754,6 @@ static const vertical_dashed_t mr_vlines[] = {
 	}
 }
 
-
-	/*/ === БУКВА "B" (ИНВЕРТИРОВАННАЯ) ПРИ "ПОДСВЕТКА ВСЕГДА ВКЛЮЧЕНА" (F+8) ===
-	if (gBacklightAlwaysOn) {
-		// Позиция рядом с батареей — X = 110, Y = 0 (статусная строка)
-		GUI_DisplaySmallestDark("B", 70, 2, false, false);
-	}*/
 
 		// АУДИОБАР — рисуем ПОСЛЕДНИМ, чтобы был поверх всех надписей
 	UI_DisplayAudioBar();
