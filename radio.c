@@ -1,21 +1,4 @@
-/* Original work Copyright 2023 Dual Tachyon
- * https://github.com/DualTachyon
- *
- * Modified work Copyright 2024 kamilsss655
- * https://github.com/kamilsss655
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- *     Unless required by applicable law or agreed to in writing, software
- *     distributed under the License is distributed on an "AS IS" BASIS,
- *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *     See the License for the specific language governing permissions and
- *     limitations under the License.
- */
+
 
 #include <string.h>
 #include "app/fm.h"
@@ -523,60 +506,6 @@ void RADIO_SetupRegisters(bool switchToForeground)
 
 	BK4819_PickRXFilterPathBasedOnFrequency(Frequency);
 
-
-
-/*if (gEeprom.SATCOM_ENABLE && Frequency >= 24000000 && Frequency <= 38000000)
-{
-    // 1. Принудительный фильтр UHF (Band 3)
-    uint16_t reg44 = BK4819_ReadRegister(0x44);
-    reg44 &= ~(7u << 13);
-    reg44 |= (2u << 13); 
-    BK4819_WriteRegister(0x44, reg44);
-
-    // 2. LNA Gain Max (0xF = 15)
-    uint16_t reg13 = BK4819_ReadRegister(0x13);
-    reg13 &= ~(0xFu << 8);
-    reg13 |= (0xFu << 8); 
-    BK4819_WriteRegister(0x13, reg13);
-    
-    // 3. Mixer Gain Max (3 = Max) снизить 2u << 3
-    uint16_t reg10 = BK4819_ReadRegister(0x10);
-    reg10 &= ~(3u << 3);
-    reg10 |= (3u << 3);
-    BK4819_WriteRegister(0x10, reg10);
-
-    // Короткий миг фонариком (опционально, для контроля)
-    GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
-    SYSTEM_DelayMs(20); 
-    GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
-
-	// Добавь это в блок SATCOM_ENABLE
-uint16_t reg12 = BK4819_ReadRegister(0x12);
-reg12 &= ~(1u << 6); // Снимаем аттенюатор (если был)
-BK4819_WriteRegister(0x12, reg12);
-} 
-else 
-{
-    // ВОЗВРАТ К ДЕФОЛТАМ (Очень важно!)
-    // По умолчанию для этого диапазона в kamilsss655/Tachyon:
-    
-    // Рег 0x13 (LNA) обычно стоит в AUTO или 0x8 (среднее)
-    uint16_t r13 = BK4819_ReadRegister(0x13);
-    r13 &= ~(0xFu << 8);
-    r13 |= (0x8u << 8); 
-    BK4819_WriteRegister(0x13, r13);
-
-    // Рег 0x10 (Mixer) обычно стоит 0x2
-    uint16_t r10 = BK4819_ReadRegister(0x10);
-    r10 &= ~(3u << 3);
-    r10 |= (2u << 3);
-    BK4819_WriteRegister(0x10, r10);
-}*/
-
-
-
-
-
 	// what does this in do ?
 	BK4819_ToggleGpioOut(BK4819_GPIO0_PIN28_RX_ENABLE, true);
 
@@ -648,102 +577,13 @@ else
 
 	if (switchToForeground)
 		FUNCTION_Select(FUNCTION_FOREGROUND);
-	// ────────────────────────────────────────────────
-    // SATCOM BOOST — ставим ПОСЛЕ всего остального!
-    // ────────────────────────────────────────────────
-    // --- SATCOM BOOST PATCH (RX gain + BW opt, 240–280 МГц) ---
-if (gEeprom.SATCOM_ENABLE && Frequency >= 24000000 && Frequency <= 28000000)
-{
-    // Моргание (1 раз) для теста
-    GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
-    SYSTEM_DelayMs(20);
-    GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
 
-    // 1. Band 3 (UHF high)
-    uint16_t reg44 = BK4819_ReadRegister(0x44);
-    reg44 = (reg44 & ~(7u << 13)) | (2u << 13); 
-    BK4819_WriteRegister(0x44, reg44);
+	BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, false);
 
-    // 2. LNA Max
-    uint16_t reg13 = BK4819_ReadRegister(0x13);
-    reg13 = (reg13 & ~(0xFu << 8)) | (0xFu << 8); 
-    BK4819_WriteRegister(0x13, reg13);
-    
-    // 3. Mixer Max
-    uint16_t reg10 = BK4819_ReadRegister(0x10);
-    reg10 = (reg10 & ~(3u << 3)) | (3u << 3);
-    BK4819_WriteRegister(0x10, reg10);
-
-    // 4. IF Max + аттенюатор OFF
-    uint16_t reg12 = BK4819_ReadRegister(0x12);
-    reg12 &= ~(1u << 6);    // OFF
-    reg12 = (reg12 & 0xFFF0) | 0x000F;  // IF = 15
-    BK4819_WriteRegister(0x12, reg12);
-
-    // Fagci BW opt (2.5 kHz для чистоты)
-    uint16_t reg43 = BK4819_ReadRegister(0x43);
-    reg43 = (reg43 & ~(0b111 << 12)) | (0b010 << 12);  // RF BW = 2.5
-    reg43 = (reg43 & ~(0b111 << 9))  | (0b010 << 9);   // Weak BW = 2.5
-    reg43 = (reg43 & ~(0b11 << 4))   | (0b00 << 4);    // Wide mode
-    reg43 = (reg43 & ~(0b111 << 6))  | (0b010 << 6);   // AF LPF BW = 2.5
-    BK4819_WriteRegister(0x43, reg43);
-
-    // Стабилизация
-    SYSTEM_DelayMs(1);  // 1 мс (минимально)
-} 
-else 
-{
-    // Возврат к СТОК (не ослабляй!)
-    uint16_t reg13 = BK4819_ReadRegister(0x13);
-    reg13 = (reg13 & ~(0xFu << 8)) | (0x0Cu << 8);  // LNA сток = 12
-    reg13 |= (1u << 15);                            // AGC ON
-    BK4819_WriteRegister(0x13, reg13);
-
-    uint16_t reg10 = BK4819_ReadRegister(0x10);
-    reg10 = (reg10 & ~(3u << 3)) | (0x02u << 3);   // Mixer сток = 2
-    BK4819_WriteRegister(0x10, reg10);
-
-    uint16_t reg12 = BK4819_ReadRegister(0x12);
-    reg12 |= (1u << 6);                             // аттенюатор ON (сток)
-    BK4819_WriteRegister(0x12, reg12);
-
-    // Fagci BW сток (wide или narrow по твоему bw)
-    BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, false);  // Восстанавливаем BW
-
-    SYSTEM_DelayMs(1);  // Стабилизация
-}
-
-	// ────────────────────────────────────────────────
-// AUDIO BOOST PATCH (увеличение громкости RX)
-// ────────────────────────────────────────────────
-if (gEeprom.AUDIO_BOOST_ENABLE)  // Добавь флаг в settings.h (bool AUDIO_BOOST_ENABLE)
-{
-
-	// Моргание — 2 раза, чтобы отличать от дефолта
-        for (int i = 0; i < 1; i++) {
-            GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
-            SYSTEM_DelayMs(10);
-            GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
-            if (i == 0) SYSTEM_DelayMs(50);
-        }
-    // AF DAC Gain = max (bits 0–3 → 0xF = 15)
-    BK4819_WriteRegister(BK4819_REG_48,
-        (11u << 12) |     // оставляем
-        (0u << 10)  |     // AF Rx Gain-1 = 0dB
-        (62u << 4)  |     // AF Rx Gain-2 = Max
-        (0xFu << 0));     // AF DAC Gain = Max 15
-
-    // Опционально: компрессор для чистоты (reg 0x29 — AF TX noise compressor off, но для RX)
-    BK4819_WriteRegister(BK4819_REG_29, 0xB046);  // Compress AF Rx Ratio = 0, noise/0dB = low
-
-    // Mic sensitivity для баланса (reg 0x7D — но осторожно, это влияет на TX тоже)
-    BK4819_WriteRegister(BK4819_REG_7D, 0xE940 | (0x1Fu & 0x1F));  // Max mic tuning
-
-    // Визуальное подтверждение (1 моргание зелёного LED)
-    BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, true);
-    SYSTEM_DelayMs(50);
-    BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
-}
+	// Специальные настройки для приёма SATCOM 225–400 МГц:
+	// фиксированный максимальный gain, AFC включён, AF усиление максимальное.
+	if (BK4819_IsSatcomFrequency(Frequency))
+		BK4819_InitSatcom();
 
 }
 

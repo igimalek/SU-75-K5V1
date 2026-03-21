@@ -83,6 +83,8 @@ void     BK4819_SetRegValue(RegisterSpec s, uint16_t v);
 void     BK4819_SetAGC(bool enable);
 void     BK4819_InitAGC(ModulationMode_t modulation);
 void     BK4819_InitAGCSpectrum(ModulationMode_t modulation);
+void     BK4819_InitSatcom(void);          // Оптимизация для SATCOM 225–400 МГц
+bool     BK4819_IsSatcomFrequency(uint32_t Frequency);  // true если частота в SATCOM диапазоне
 int16_t  BK4819_GetAFCValue();
 void     BK4819_ToggleGpioOut(BK4819_GPIO_PIN_t Pin, bool bSet);
 
@@ -167,7 +169,6 @@ void     BK4819_Enable_AfDac_DiscMode_TxDsp(void);
 	    
 void     BK4819_GetVoxAmp(uint16_t *pResult);
 void     BK4819_SetScrambleFrequencyControlWord(uint32_t Frequency);
-
 
 #endif
 

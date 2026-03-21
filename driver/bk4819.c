@@ -77,9 +77,12 @@ void BK4819_Init(void)
 	BK4819_WriteRegister(BK4819_REG_00, 0x8000);
 	BK4819_WriteRegister(BK4819_REG_00, 0x0000);
 
-	BK4819_WriteRegister(BK4819_REG_37, 0x1D0F);
+	BK4819_WriteRegister(BK4819_REG_37, 0x1D0F); //0001110100001111
 	BK4819_WriteRegister(BK4819_REG_36, 0x0022);
-
+	//BK4819_WriteRegister(0x54, 0x9009);   	//default is 0x9009
+    //BK4819_WriteRegister(0x55, 0x31a9);		//default is 0x31a9
+	//BK4819_WriteRegister(0x75, 0xF50B);
+	
 	//BK4819_SetDefaultAmplifierSettings();
 
 	BK4819_WriteRegister(BK4819_REG_19, 0b0001000001000001);   // <15> MIC AGC  1 = disable  0 = enable
@@ -309,6 +312,73 @@ void BK4819_InitAGCSpectrum(ModulationMode_t modulation)
 		BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (84 << 7) | (66 << 0));
 		}
 	BK4819_WriteRegister(BK4819_REG_7B, 0x8420); //Test 4.15
+}
+
+// ─── SATCOM приём 225–400 МГц ───────────────────────────────────────────────
+// Диапазон в единицах 10 Hz (как в REG_38/39 BK4819):
+//   225 МГц = 22 500 000
+//   400 МГц = 40 000 000
+// Спутниковые сигналы (военный UHF SATCOM) — AM, узкая полоса, слабый сигнал.
+// AGC фиксируем на максимальном усилении; включаем AFC для захвата частоты.
+//
+#define SATCOM_FREQ_LOW  22500000u   // 225.000 МГц
+#define SATCOM_FREQ_HIGH 40000000u   // 400.000 МГц
+
+bool BK4819_IsSatcomFrequency(uint32_t Frequency)
+{
+	return (Frequency >= SATCOM_FREQ_LOW && Frequency <= SATCOM_FREQ_HIGH);
+}
+
+void BK4819_InitSatcom(void)
+{
+	// ── Таблица усиления (REG_10..14): максимальный gain для слабых сигналов ──
+	// Формат каждого регистра: [15:10]=0 | [9:8]=LNA_SHORT | [7:5]=LNA | [4:3]=MIXER | [2:0]=PGA
+	//   LNA_SHORT: 3=0dB  2=-24dB  1=-30dB  0=-33dB
+	//   LNA:       7=0dB  6=-2dB   5=-4dB   4=-6dB   3=-9dB  2=-14dB  1=-19dB  0=-24dB
+	//   MIXER:     3=0dB  2=-3dB   1=-6dB   0=-8dB
+	//   PGA:       7=0dB  6=-3dB   5=-6dB   4=-9dB   3=-15dB 2=-21dB  1=-27dB  0=-33dB
+	//
+	// Index 3 (max)  → REG_13: LNA_S=0dB LNA=0dB  MIX=0dB PGA=-3dB
+	BK4819_WriteRegister(BK4819_REG_13, 0x03FE);
+	// Index 2        → REG_12: LNA_S=0dB LNA=-2dB MIX=0dB PGA=-3dB
+	BK4819_WriteRegister(BK4819_REG_12, 0x03DE);
+	// Index 1        → REG_11: LNA_S=0dB LNA=-4dB MIX=0dB PGA=-6dB
+	BK4819_WriteRegister(BK4819_REG_11, 0x03BD);
+	// Index 0        → REG_10: LNA_S=0dB LNA=-6dB MIX=0dB PGA=-9dB
+	BK4819_WriteRegister(BK4819_REG_10, 0x039C);
+	// Index -1 (min) → REG_14: всё в минимум (резервный)
+	BK4819_WriteRegister(BK4819_REG_14, 0x0000);
+
+	// ── REG_7E: фиксируем AGC на индексе 3 (максимальное усиление) ──────────
+	// bit15=1: fix mode ON  |  bits[14:12]=3: index=3(max)
+	// остальные биты (DC filter) оставляем как есть
+	{
+		uint16_t r7e = BK4819_ReadRegister(BK4819_REG_7E);
+		BK4819_WriteRegister(BK4819_REG_7E,
+			(r7e & ~(1u << 15) & ~(0b111u << 12))
+			| (1u << 15)      // AGC fix mode = ON
+			| (3u << 12));    // AGC fix index = 3 (max)
+	}
+
+	// ── REG_49: окно AGC под AM — узкое (спутник слабый, динамика маленькая) ─
+	BK4819_WriteRegister(BK4819_REG_49, (0u << 14) | (50u << 7) | (20u << 0));
+
+	// ── REG_7B: AGC filter ───────────────────────────────────────────────────
+	BK4819_WriteRegister(BK4819_REG_7B, 0x8420);
+
+	// ── REG_73: включаем AFC, максимальный диапазон захвата ─────────────────
+	// AFC Range Select [13:11]=7 (макс. pull range)
+	// AFC Speed        [10:5]=52 (стандартная скорость)
+	// AFC Disable      [4]  =0  (AFC включён)
+	BK4819_WriteRegister(BK4819_REG_73, 0x3E80);
+
+	// ── REG_48: максимальное AF усиление ────────────────────────────────────
+	// AF Rx Gain-1=0dB | AF Rx Gain-2=62(max-1) | AF DAC=12
+	BK4819_WriteRegister(BK4819_REG_48,
+		(11u << 12) |   // ???
+		( 0u << 10) |   // AF Rx Gain-1 = 0dB
+		(62u <<  4) |   // AF Rx Gain-2 = max-1 (чуть ниже абсолютного max чтобы не клипало)
+		(12u <<  0));   // AF DAC Gain  = 12
 }
 
 void BK4819_ToggleGpioOut(BK4819_GPIO_PIN_t Pin, bool bSet)
@@ -574,31 +644,8 @@ void BK4819_SetupPowerAmplifier(uint8_t Bias, uint32_t Frequency) {
 
 void BK4819_SetFrequency(uint32_t Frequency)
 {
-	
 	BK4819_WriteRegister(BK4819_REG_38, (Frequency >>  0) & 0xFFFF);
 	BK4819_WriteRegister(BK4819_REG_39, (Frequency >> 16) & 0xFFFF);
-	/*/ Backend форсаж для 27 МГц
-    if (Frequency < 3000000) { 
-        // Выкручиваем усиление LNA (0x10) и убираем аттенюатор (0x12)
-        BK4819_WriteRegister(BK4819_REG_10, 0x3FFB);
-        BK4819_WriteRegister(BK4819_REG_12, 0x0000);
-        // Расширяем фильтр для AM (регистр 0x43)
-        BK4819_WriteRegister(BK4819_REG_43, BK4819_ReadRegister(BK4819_REG_43) | (1 << 9));
-    }*/
-	// Backend форсаж для 27 МГц (CB диапазон)
-    if (Frequency < 3000000) 
-    {
-        // 1. Выкручиваем усиление LNA и Смесителя на максимум (Регистр 0x10)
-        // В КВ диапазоне чип "тугой", без этого бита он почти ничего не видит
-        BK4819_WriteRegister(BK4819_REG_10, 0x3FFB);
-
-        // 2. Отключаем аттенюаторы (Регистр 0x12)
-        BK4819_WriteRegister(BK4819_REG_12, 0x0000);
-        
-        // 3. Оптимизация ПЧ (Регистр 0x43) - ставим широкую полосу для AM
-        uint16_t r43 = BK4819_ReadRegister(0x43);
-        BK4819_WriteRegister(0x43, r43 | (7 << 9));
-    }
 }
 
 void BK4819_SetupSquelch(
@@ -705,30 +752,11 @@ void BK4819_SetRegValue(RegisterSpec s, uint16_t v) {
   BK4819_WriteRegister(s.num, reg | (v << s.offset));
 }
 
-void BK4819_RX_TurnOn(void)
-{
-	// DSP Voltage Setting = 1
-	// ANA LDO = 2.7v
-	// VCO LDO = 2.7v
-	// RF LDO  = 2.7v
-	// PLL LDO = 2.7v
-	// ANA LDO bypass
-	// VCO LDO bypass
-	// RF LDO  bypass
-	// PLL LDO bypass
-	// Reserved bit is 1 instead of 0
-	// Enable  DSP
-	// Enable  XTAL
-	// Enable  Band Gap
-	//
-	BK4819_WriteRegister(BK4819_REG_37, 0x1F0F);  // 0001111100001111
-
-	// Turn off everything
-	BK4819_WriteRegister(BK4819_REG_30, 0);
-
-	SYSTEM_DelayMs(20);  // Delay for RX activation ЧИНИМ ПРИЕМ 
-
-	BK4819_WriteRegister(BK4819_REG_30, 
+void BK4819_RX_TurnOn(void) {
+  BK4819_WriteRegister(BK4819_REG_37, 0x1F0F);
+  BK4819_WriteRegister(BK4819_REG_30, 0x0000);
+  SYSTEM_DelayMs(10);
+  BK4819_WriteRegister(BK4819_REG_30, 
 		BK4819_REG_30_ENABLE_VCO_CALIB |
 		BK4819_REG_30_DISABLE_UNKNOWN |
 		BK4819_REG_30_ENABLE_RX_LINK |

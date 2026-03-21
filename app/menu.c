@@ -971,7 +971,7 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
 						return; 
 					}
 
-					//********аудио усиление */
+					/********аудио усиление 
 		if (UI_MENU_GetCurrentMenuId() == MENU_RXGAIN) 
 					{
 						// 1. Инвертируем флаг
@@ -988,7 +988,7 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
 						gRequestDisplayScreen = DISPLAY_MENU; 
 						
 						return; 
-					}
+					}*/
 
 		if (UI_MENU_GetCurrentMenuId() == MENU_DEL_CH || UI_MENU_GetCurrentMenuId() == MENU_MEM_NAME)
 				if (!RADIO_CheckValidChannel(gSubMenuSelection, false,0))

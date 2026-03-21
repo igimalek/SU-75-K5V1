@@ -843,9 +843,23 @@ static void FillfreqHistory(void)
     HBlacklisted[pos] = 0;
     lastReceivingFreq = f;
     historyListIndex = pos;
-    if (indexFs < HISTORY_SIZE) indexFs++;
-    
-    if (indexFs >= HISTORY_SIZE) {indexFs = 0;}
+
+    if (indexFs < HISTORY_SIZE) {
+        indexFs++;
+    } else {
+        // Буфер полон — удаляем самую первую (наименьшую) запись, сдвигая массив влево
+        // Это сохраняет плотность массива без сброса indexFs в 0
+        for (uint16_t i = 1; i < HISTORY_SIZE; i++) {
+            HFreqs[i - 1]       = HFreqs[i];
+            HCount[i - 1]       = HCount[i];
+            HBlacklisted[i - 1] = HBlacklisted[i];
+        }
+        HFreqs[HISTORY_SIZE - 1]       = 0;
+        HCount[HISTORY_SIZE - 1]       = 0;
+        HBlacklisted[HISTORY_SIZE - 1] = 0;
+        // indexFs остаётся HISTORY_SIZE, historyListIndex корректируем
+        if (historyListIndex > 0) historyListIndex--;
+    }
 /*     for (uint8_t i = 0; i < indexFs; i++) {
         char str[64];
         sprintf(str, "%d %d %lu\r\n", i, indexFs, HFreqs[i]);
@@ -1209,14 +1223,15 @@ static void Blacklist() {
         }
     }
 
-    HFreqs[indexFs]   = peak.f;
-    HCount[indexFs]       = 1;
-    HBlacklisted[indexFs] = true;
+    HFreqs[indexFs]        = peak.f;
+    HCount[indexFs]        = 1;
+    HBlacklisted[indexFs]  = true;
     historyListIndex = indexFs;
-    if (++indexFs >= HISTORY_SIZE) {
-      historyScrollOffset = 0;
-      indexFs=0;
-    }  
+    if (indexFs < HISTORY_SIZE - 1) {
+        indexFs++;
+    }
+    // Если буфер полон — просто не добавляем новую запись сверх лимита,
+    // запись уже сохранена в последней позиции indexFs (HISTORY_SIZE-1)
 }
 
 
@@ -1649,9 +1664,9 @@ static void NextScanStep() {
 }
 
 static uint16_t CountValidHistoryItems() {
-    uint16_t count = 0;
-    for (uint16_t i = 0; i < HISTORY_SIZE; i++) {if (HFreqs[i]) count++;}
-    return count;
+    // Массив HFreqs[0..indexFs-1] всегда плотный (FillfreqHistory поддерживает сортировку со сдвигом)
+    // Считаем только его — не сканируем весь буфер за пределами indexFs
+    return indexFs;
 }
 
 static void Skip() {
@@ -3551,9 +3566,9 @@ static void GetParametersText(uint16_t index, char *buffer) {
 
 static void GetBandItemText(uint16_t index, char* buffer) {
     if (settings.bandEnabled[index]) {
-        sprintf(buffer, "> %d:%-11s", index + 1, BParams[index].BandName);
+        sprintf(buffer, "> %d: %-11s", index + 1, BParams[index].BandName);
     } else {
-        sprintf(buffer, "  %d:%-11s", index + 1, BParams[index].BandName);
+        sprintf(buffer, "  %d: %-11s", index + 1, BParams[index].BandName);
     }
 }
 

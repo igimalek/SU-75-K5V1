@@ -249,13 +249,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
     break;
 					
 					
-				case KEY_0:
-					// Длинное 0 — смена демодуляции
-					ACTION_SwitchDemodul();
-					gRequestSaveChannel = 1;
-					RADIO_SetupRegisters(true);
-					
-					break;
+				
 				case KEY_9:
 					// Длинное 9 — toggle "подсветка всегда включена" (перенесено с 8)
 					gBacklightAlwaysOn = !gBacklightAlwaysOn;
@@ -279,6 +273,14 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 							}
 						}
 					}
+					
+					break;
+
+					case KEY_0:
+					// Длинное 0 — смена демодуляции
+					ACTION_SwitchDemodul();
+					gRequestSaveChannel = 1;
+					RADIO_SetupRegisters(true);
 					
 					break;
 				default:
