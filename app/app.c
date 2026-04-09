@@ -63,6 +63,8 @@
 
 #include "driver/eeprom.h"
 extern bool gBacklightAlwaysOn;  // подсветка всегда включена (F+8)
+extern uint16_t gVfoPopupTimer;
+extern char     gVfoPopupText[32];
 
 bool gCurrentTxState = false;
 
@@ -221,12 +223,12 @@ static void HandleReceive(void)
 
 	if (!gEndOfRxDetectedMaybe         &&
 	     Mode == END_OF_RX_MODE_SKIP   &&
-	     gNextTimeslice40ms            &&
+	     gNextTimeslice_30ms            &&
 	    (gCurrentCodeType == CODE_TYPE_DIGITAL || gCurrentCodeType == CODE_TYPE_REVERSE_DIGITAL) &&
 	     BK4819_GetCTCType() == 1)
 		Mode = END_OF_RX_MODE_TTE;
 	else
-		gNextTimeslice40ms = false;
+		gNextTimeslice_30ms = false;
 
 Skip:
 	switch (Mode)
@@ -305,17 +307,17 @@ if (gEeprom.FlashlightOnRX && (Function == FUNCTION_RECEIVE || Function == FUNCT
 	gVFO_RSSI_bar_level[(chan + 1) & 1u] = 0;
 
 	AUDIO_AudioPathOn();
-	//VFO sensitivity test KOLYAN ToggleAFDAC
-  	uint32_t Reg = regs_cache[BK4819_REG_30];
-  	Reg &= ~(1 << 9);
-  	Reg |= (1 << 9);
-  	BK4819_WriteRegister(BK4819_REG_30, Reg);
-	
-	//VFO sensitivity test KOLYAN ToggleAFBit
-  	uint32_t reg = regs_cache[BK4819_REG_47];
-  	reg &= ~(1 << 8);
-  	reg |= 1 << 8;
-  	BK4819_WriteRegister(BK4819_REG_47, reg);
+	//TEST KAMILS //VFO sensitivity test KOLYAN ToggleAFDAC
+  	//TEST KAMILS uint32_t Reg = regs_cache[BK4819_REG_30];
+  	//TEST KAMILS Reg &= ~(1 << 9);
+  	//TEST KAMILS Reg |= (1 << 9);
+  	//TEST KAMILS BK4819_WriteRegister(BK4819_REG_30, Reg);
+	//TEST KAMILS 
+	//TEST KAMILS //VFO sensitivity test KOLYAN ToggleAFBit
+  	//TEST KAMILS uint32_t reg = regs_cache[BK4819_REG_47];
+  	//TEST KAMILS reg &= ~(1 << 8);
+  	//TEST KAMILS reg |= 1 << 8;
+  	//TEST KAMILS BK4819_WriteRegister(BK4819_REG_47, reg);
 
  	
 	gEnableSpeaker = true;
@@ -683,15 +685,15 @@ void APP_TimeSlice10ms(void)
 
 	if (gCurrentFunction == FUNCTION_TRANSMIT)
 	{	// transmitting
-			if ((gFlashLightBlinkCounter % (150 / 10)) == 0) // once every 150ms
+			if ((gFlashLightBlinkCounter % 15) == 0) // once every 150ms
 				UI_DisplayAudioBar();
 	}
 
-	static uint8_t DisplayStatusCountdown = 15; // новое тест
+	static uint8_t DisplayStatusCountdown = 20;
 	if (!DisplayStatusCountdown--){
 		UI_DisplayStatus();
 		GUI_DisplayScreen();
-		DisplayStatusCountdown = 15;
+		DisplayStatusCountdown = 20;
 		ST7565_BlitFullScreen();
 	}
 
@@ -756,6 +758,13 @@ if (gMRInputTimer > 0) {
         gMRInputTimer = 0;
     }
 }
+
+	// Таймер попапа сохранения в канал
+	if (gVfoPopupTimer > 0) {
+		if (--gVfoPopupTimer == 0)
+			gVfoPopupText[0] = '\0';
+		gRequestDisplayScreen = DISPLAY_MAIN;
+	}
 }
 
 void cancelUserInputModes(void)

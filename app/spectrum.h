@@ -52,7 +52,9 @@ static const uint8_t U8RssiMap[] = {
     121, 115, 109, 103, 97, 91, 85, 79, 73, 63,
 };
 
-static const uint16_t scanStepValues[] = {1, 10, 50, 100, 250, 500, 625, 833, 1000, 1250, 2500, 10000, 50000};
+static const uint16_t scanStepValues[]  = {1, 10, 50, 100, 250, 500, 625, 833, 1000, 1250, 2500, 10000, 50000};
+static const uint16_t jumpSizes[]       = {2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500, 3000, 2500, 2500, 10000, 50000};
+static const uint16_t interlacedLoops[] = {2500, 250, 50, 25, 10, 5, 4, 3, 3, 2, 1, 1, 1};
 
 static const uint16_t scanStepBWRegValues[] = {
     //     RX  RXw TX  BW
@@ -89,6 +91,7 @@ static const uint16_t scanStepBWRegValues[] = {
 //     0b0100100001011000, // 6.25
 // };
 
+#define MAX_BANDS 32
 
 typedef enum State {
   SPECTRUM,
@@ -200,7 +203,7 @@ void APP_RunSpectrum(uint8_t Spectrum_state);
 //void LookupChannelInfo();
 //void LookupChannelModulation();
 void ClearSettings(void);
-void LoadSettings(bool LNA);
+void LoadSettings(void);
 
 
 #endif 

@@ -39,6 +39,8 @@ extern uint8_t           gFM_ChannelPosition;
 // Doubts about          whether this should be signed or not
 extern uint16_t          gFM_FrequencyDeviation;
 extern uint16_t          gFM_RestoreCountdown_10ms;
+extern bool              gFM_ManualMode;   // false = AUTO scan, true = MANUAL step
+extern bool              gFM_Mute;         // true = mute BK1080, block RX from stealing display
 
 void    FM_TurnOff(void);
 

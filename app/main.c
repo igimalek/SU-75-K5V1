@@ -38,6 +38,18 @@
 #include "ui/inputbox.h"
 #include "ui/ui.h"
 #include <stdlib.h>
+
+// Попап для VFO-режима (аналог spectrum, только свой)
+char     gVfoPopupText[32] = "";
+uint16_t gVfoPopupTimer    = 0;  // декрементируй каждые 10 мс (как osdPopupTimer в спектруме)
+
+static void ShowVfoPopup(const char *str) {
+    gVfoPopupTimer = 100;  // 2 секунды (200 × 10 мс)
+    strncpy(gVfoPopupText, str, sizeof(gVfoPopupText) - 1);
+    gVfoPopupText[sizeof(gVfoPopupText) - 1] = '\0';
+    gRequestDisplayScreen = DISPLAY_MAIN;  // сразу перерисовать экран
+}
+
 uint16_t gMRInputTimer = 0;  // таймер ожидания следующей цифры (в 10 мс)
 bool gBacklightAlwaysOn = false;
 
@@ -188,11 +200,58 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 					break;
 
 				case KEY_2:
-					// Длинное 2 = F+2
-					if (++gTxVfo->SCANLIST > 15) gTxVfo->SCANLIST = 0;
-					SETTINGS_UpdateChannel(gTxVfo->CHANNEL_SAVE, gTxVfo, true);
-					gVfoConfigureMode = VFO_CONFIGURE;
-					gFlagResetVfos    = true;
+					if (IS_FREQ_CHANNEL(gTxVfo->CHANNEL_SAVE)) {
+						// Длинное 2 в VFO — сохранить частоту в первую свободную ячейку
+						uint32_t f = gTxVfo->pRX->Frequency;
+						char str[32];
+
+						// Проверяем дубликат
+						int existCh = -1;
+						for (int i = 0; i <= MR_CHANNEL_LAST; i++) {
+							if (RADIO_CheckValidChannel(i, false, 0) &&
+							    gMR_ChannelFrequencyAttributes[i].Frequency == f) {
+								existCh = i;
+								break;
+							}
+						}
+						if (existCh != -1) {
+							sprintf(str, "Exist CH %d", existCh + 1);
+							ShowVfoPopup(str);
+							break;
+						}
+
+						// Ищем первую свободную ячейку
+						int freeCh = -1;
+						for (int i = 0; i <= MR_CHANNEL_LAST; i++) {
+							if (!RADIO_CheckValidChannel(i, false, 0)) {
+								freeCh = i;
+								break;
+							}
+						}
+
+						if (freeCh != -1) {
+							VFO_Info_t tempVFO;
+							memset(&tempVFO, 0, sizeof(tempVFO));
+							tempVFO.freq_config_RX.Frequency = f;
+							tempVFO.freq_config_TX.Frequency = f;
+							tempVFO.TX_OFFSET_FREQUENCY      = 0;
+							tempVFO.Modulation               = gTxVfo->Modulation;
+							tempVFO.CHANNEL_BANDWIDTH        = gTxVfo->CHANNEL_BANDWIDTH;
+							tempVFO.OUTPUT_POWER             = OUTPUT_POWER_LOW;
+							tempVFO.STEP_SETTING             = gTxVfo->STEP_SETTING;
+							SETTINGS_SaveChannel(freeCh, &tempVFO, 2);
+							sprintf(str, "SAVED TO CH %d", freeCh + 1);
+							ShowVfoPopup(str);
+						} else {
+							ShowVfoPopup("MEMORY FULL");
+						}
+					} else {
+						// Длинное 2 в MR — цикл по спискам сканирования
+						if (++gTxVfo->SCANLIST > 15) gTxVfo->SCANLIST = 0;
+						SETTINGS_UpdateChannel(gTxVfo->CHANNEL_SAVE, gTxVfo, true);
+						gVfoConfigureMode = VFO_CONFIGURE;
+						gFlagResetVfos    = true;
+					}
 					break;
 
 				/*case KEY_3:

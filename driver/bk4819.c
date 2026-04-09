@@ -76,14 +76,10 @@ void BK4819_Init(void)
 
 	BK4819_WriteRegister(BK4819_REG_00, 0x8000);
 	BK4819_WriteRegister(BK4819_REG_00, 0x0000);
-
+	
 	BK4819_WriteRegister(BK4819_REG_37, 0x1D0F); //0001110100001111
 	BK4819_WriteRegister(BK4819_REG_36, 0x0022);
-	//BK4819_WriteRegister(0x54, 0x9009);   	//default is 0x9009
-    //BK4819_WriteRegister(0x55, 0x31a9);		//default is 0x31a9
-	//BK4819_WriteRegister(0x75, 0xF50B);
-	
-	//BK4819_SetDefaultAmplifierSettings();
+	BK4819_WriteRegister(BK4819_REG_13, 0x03BE); //TEST KAMILS //BK4819_SetDefaultAmplifierSettings();
 
 	BK4819_WriteRegister(BK4819_REG_19, 0b0001000001000001);   // <15> MIC AGC  1 = disable  0 = enable
 
@@ -121,12 +117,11 @@ void BK4819_Init(void)
 
 	BK4819_WriteRegister(BK4819_REG_33, 0x9000);
 	BK4819_WriteRegister(BK4819_REG_3F, 0);
-	BK4819_WriteRegister(BK4819_REG_73, 0x4692);
+	//TEST KAMILS BK4819_WriteRegister(BK4819_REG_73, 0x4692);
 
 	SYSTEM_DelayMs(50);  // Delay 50ms after init to wake up BK4819 ЧИНИМ ПРИЕМ ПОСЛЕ ВКЛЮЧЕНИЯ
-BK4819_RX_TurnOn();  // Force RX on
-SYSTEM_DelayMs(10);  // Small delay for PLL lock
-
+	BK4819_RX_TurnOn();  // Force RX on
+	SYSTEM_DelayMs(10);  // Small delay for PLL lock
 }
 
 static uint16_t BK4819_ReadU16(void) {
@@ -226,21 +221,6 @@ void BK4819_SetAGC(bool enable)
 		| (!enable << 15)   // 0  AGC fix mode
 		| (0b100 << 12)       // 3  AGC fix index -> changed to min as experiment
 	);
-
-	// if(enable) {
-	// 	BK4819_WriteRegister(BK4819_REG_7B, 0x8420);
-	// }
-	// else {
-	// 	BK4819_WriteRegister(BK4819_REG_7B, 0x318C);
-	
-	// 	BK4819_WriteRegister(BK4819_REG_7C, 0x595E);
-	// 	BK4819_WriteRegister(BK4819_REG_20, 0x8DEF);
-
-	// 	for (uint8_t i = 0; i < 8; i++) {
-	// 		//BK4819_WriteRegister(BK4819_REG_06, ((i << 13) | 0x2500u) + 0x036u);
-	// 		BK4819_WriteRegister(BK4819_REG_06, (i & 7) << 13 | 0x4A << 7 | 0x36);
-	// 	}
-	// }
 }
 
 // REG_10, REG_11, REG_12 REG_13, REG_14
@@ -293,12 +273,9 @@ void BK4819_InitAGC(ModulationMode_t modulation)
 		//FM, USB modulation
 		BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (84 << 7) | (66 << 0));
 		}
-	LoadSettings(1);
+	
 	BK4819_WriteRegister(BK4819_REG_7B, 0x8420); //Test 4.15
-/* 	BK4819_WriteRegister(BK4819_REG_12, 0x0393);  // 0x037B / 000000 11 011 11 011 / -24dB
-	BK4819_WriteRegister(BK4819_REG_11, 0x01B5);  // 0x027B / 000000 10 011 11 011 / -43dB
-	BK4819_WriteRegister(BK4819_REG_10, 0x0145);  // 0x007A / 000000 00 011 11 010 / -58dB
-	BK4819_WriteRegister(BK4819_REG_14, 0x0019);  // 0x0019 / 000000 00 000 11 001 / -84dB */
+	BK4819_WriteRegister(BK4819_REG_24, 0); //Test Disable DTMF
 }
 
 void BK4819_InitAGCSpectrum(ModulationMode_t modulation)
@@ -312,73 +289,6 @@ void BK4819_InitAGCSpectrum(ModulationMode_t modulation)
 		BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (84 << 7) | (66 << 0));
 		}
 	BK4819_WriteRegister(BK4819_REG_7B, 0x8420); //Test 4.15
-}
-
-// ─── SATCOM приём 225–400 МГц ───────────────────────────────────────────────
-// Диапазон в единицах 10 Hz (как в REG_38/39 BK4819):
-//   225 МГц = 22 500 000
-//   400 МГц = 40 000 000
-// Спутниковые сигналы (военный UHF SATCOM) — AM, узкая полоса, слабый сигнал.
-// AGC фиксируем на максимальном усилении; включаем AFC для захвата частоты.
-//
-#define SATCOM_FREQ_LOW  22500000u   // 225.000 МГц
-#define SATCOM_FREQ_HIGH 40000000u   // 400.000 МГц
-
-bool BK4819_IsSatcomFrequency(uint32_t Frequency)
-{
-	return (Frequency >= SATCOM_FREQ_LOW && Frequency <= SATCOM_FREQ_HIGH);
-}
-
-void BK4819_InitSatcom(void)
-{
-	// ── Таблица усиления (REG_10..14): максимальный gain для слабых сигналов ──
-	// Формат каждого регистра: [15:10]=0 | [9:8]=LNA_SHORT | [7:5]=LNA | [4:3]=MIXER | [2:0]=PGA
-	//   LNA_SHORT: 3=0dB  2=-24dB  1=-30dB  0=-33dB
-	//   LNA:       7=0dB  6=-2dB   5=-4dB   4=-6dB   3=-9dB  2=-14dB  1=-19dB  0=-24dB
-	//   MIXER:     3=0dB  2=-3dB   1=-6dB   0=-8dB
-	//   PGA:       7=0dB  6=-3dB   5=-6dB   4=-9dB   3=-15dB 2=-21dB  1=-27dB  0=-33dB
-	//
-	// Index 3 (max)  → REG_13: LNA_S=0dB LNA=0dB  MIX=0dB PGA=-3dB
-	BK4819_WriteRegister(BK4819_REG_13, 0x03FE);
-	// Index 2        → REG_12: LNA_S=0dB LNA=-2dB MIX=0dB PGA=-3dB
-	BK4819_WriteRegister(BK4819_REG_12, 0x03DE);
-	// Index 1        → REG_11: LNA_S=0dB LNA=-4dB MIX=0dB PGA=-6dB
-	BK4819_WriteRegister(BK4819_REG_11, 0x03BD);
-	// Index 0        → REG_10: LNA_S=0dB LNA=-6dB MIX=0dB PGA=-9dB
-	BK4819_WriteRegister(BK4819_REG_10, 0x039C);
-	// Index -1 (min) → REG_14: всё в минимум (резервный)
-	BK4819_WriteRegister(BK4819_REG_14, 0x0000);
-
-	// ── REG_7E: фиксируем AGC на индексе 3 (максимальное усиление) ──────────
-	// bit15=1: fix mode ON  |  bits[14:12]=3: index=3(max)
-	// остальные биты (DC filter) оставляем как есть
-	{
-		uint16_t r7e = BK4819_ReadRegister(BK4819_REG_7E);
-		BK4819_WriteRegister(BK4819_REG_7E,
-			(r7e & ~(1u << 15) & ~(0b111u << 12))
-			| (1u << 15)      // AGC fix mode = ON
-			| (3u << 12));    // AGC fix index = 3 (max)
-	}
-
-	// ── REG_49: окно AGC под AM — узкое (спутник слабый, динамика маленькая) ─
-	BK4819_WriteRegister(BK4819_REG_49, (0u << 14) | (50u << 7) | (20u << 0));
-
-	// ── REG_7B: AGC filter ───────────────────────────────────────────────────
-	BK4819_WriteRegister(BK4819_REG_7B, 0x8420);
-
-	// ── REG_73: включаем AFC, максимальный диапазон захвата ─────────────────
-	// AFC Range Select [13:11]=7 (макс. pull range)
-	// AFC Speed        [10:5]=52 (стандартная скорость)
-	// AFC Disable      [4]  =0  (AFC включён)
-	BK4819_WriteRegister(BK4819_REG_73, 0x3E80);
-
-	// ── REG_48: максимальное AF усиление ────────────────────────────────────
-	// AF Rx Gain-1=0dB | AF Rx Gain-2=62(max-1) | AF DAC=12
-	BK4819_WriteRegister(BK4819_REG_48,
-		(11u << 12) |   // ???
-		( 0u << 10) |   // AF Rx Gain-1 = 0dB
-		(62u <<  4) |   // AF Rx Gain-2 = max-1 (чуть ниже абсолютного max чтобы не клипало)
-		(12u <<  0));   // AF DAC Gain  = 12
 }
 
 void BK4819_ToggleGpioOut(BK4819_GPIO_PIN_t Pin, bool bSet)
@@ -554,32 +464,6 @@ void BK4819_SetTailDetection(const uint32_t freq_10Hz)
 	BK4819_WriteRegister(BK4819_REG_07, BK4819_REG_07_MODE_CTC2 | ((253910 + (freq_10Hz / 2)) / freq_10Hz));  // with rounding
 }
 
-void BK4819_EnableVox(uint16_t VoxEnableThreshold, uint16_t VoxDisableThreshold, uint8_t VoxDelay)
-{
-	//VOX Algorithm
-	//if (voxamp>VoxEnableThreshold)                VOX = 1;
-	//else
-	//if (voxamp<VoxDisableThreshold) (After Delay) VOX = 0;
-
-	const uint16_t REG_31_Value = BK4819_ReadRegister(BK4819_REG_31);
-
-	// 0xA000 is undocumented?
-	BK4819_WriteRegister(BK4819_REG_46, 0xA000 | (VoxEnableThreshold & 0x07FF));
-
-	// 0x1800 is undocumented?
-	BK4819_WriteRegister(BK4819_REG_79, 0x1800 | (VoxDisableThreshold & 0x07FF));
-
-	// Set VOX delay
-	// Bottom 12 bits are undocumented, 15:12 vox disable delay *128ms
-	// BK4819_WriteRegister(BK4819_REG_7A, 0x289A); // vox disable delay = 128*5 = 640ms
-	// max delay = F89A = 1920ms
-	// min delay = 089A = 0ms
-	BK4819_WriteRegister(BK4819_REG_7A, (0x289A & ~(0xF << 12))|(VoxDelay<<12));
-	
-    // Enable VOX
-	BK4819_WriteRegister(BK4819_REG_31, REG_31_Value | (1u << 2));    // VOX Enable
-}
-
 //1o11
 // // filter bandwidth lowers when signal is low
 // const uint16_t listenBWRegDynamicValues[5] = {
@@ -739,10 +623,6 @@ void BK4819_SetupSquelch(
 
 void BK4819_SetAF(BK4819_AF_Type_t AF)
 {
-	// AF Output Inverse Mode = Inverse
-	// Undocumented bits 0x2040
-	//
-//	BK4819_WriteRegister(BK4819_REG_47, 0x6040 | (AF << 8));
 	BK4819_WriteRegister(BK4819_REG_47, (6u << 12) | (AF << 8) | (1u << 6));
 }
 

@@ -373,7 +373,7 @@ void MENU_AcceptSetting(void)
 				else
 					BK4819_DisableScramble();
 			#endif
-			gRequestSaveChannel     = 1;
+			gRequestSaveChannel     = IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE) ? 2 : 1;
 			return;
 
 		case MENU_MEM_CH:
