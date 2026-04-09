@@ -36,6 +36,10 @@
 center_line_t center_line = CENTER_LINE_NONE;
 char gSubtone_String[16] = "";
 
+// Попап из app/main.c
+extern char     gVfoPopupText[32];
+extern uint16_t gVfoPopupTimer;
+
 // ***************************************************************************
 
 
@@ -317,7 +321,7 @@ void UI_DisplayMain(void)
 
 						// Если имени нет — берём текущую частоту (как в VFO-режиме)
 						if (DisplayString[0] == 0) {
-							uint32_t freq = BOARD_fetchChannelFrequency(gEeprom.ScreenChannel);
+							uint32_t freq = FetchChannelFrequency(gEeprom.ScreenChannel);
 							sprintf(DisplayString, "%u.%05u", freq / 100000, freq % 100000);  // ← ПОЛНАЯ ЧАСТОТА С НУЛЯМИ
 						}
 
@@ -338,7 +342,7 @@ void UI_DisplayMain(void)
 				}
 				else {
 					if (gCurrentFunction == FUNCTION_TRANSMIT) frequency = gEeprom.VfoInfo.pTX->Frequency;
-					else if (gEeprom.ScreenChannel <= MR_CHANNEL_LAST) frequency = BOARD_fetchChannelFrequency(gEeprom.ScreenChannel);
+					else if (gEeprom.ScreenChannel <= MR_CHANNEL_LAST) frequency = FetchChannelFrequency(gEeprom.ScreenChannel);
 								
 				// МЕЛКИЕ НУЛИ ЧАСТОТЫ
 				sprintf(String, "%3u.%05u", frequency / 100000, frequency % 100000);
@@ -406,7 +410,7 @@ void UI_DisplayMain(void)
 			uint8_t mod_x = mod_x_base - (strlen(s) * 7 / 2) + comp;
 
 			// Выводим тем же шрифтом, что и T (PTT) — UI_PrintStringSmall
-			UI_PrintStringBSmall(s, mod_x, 0, mod_y, 0);
+			UI_PrintStringSmallBold(s, mod_x, 0, mod_y, 0);
 		}
 
 
@@ -417,7 +421,7 @@ void UI_DisplayMain(void)
 		uint8_t x = IS_MR_CHANNEL(gEeprom.ScreenChannel) ? x_mr : x_vfo;
 		uint8_t y = IS_MR_CHANNEL(gEeprom.ScreenChannel) ? y_mr : y_vfo;
 		if (x != 255 && y != 255)
-			UI_PrintStringBSmall("S", LCD_WIDTH + x, 0, y, 0);
+			UI_PrintStringSmallBold("S", LCD_WIDTH + x, 0, y, 0);
 	}
 
 		
@@ -435,7 +439,7 @@ void UI_DisplayMain(void)
     uint8_t y = IS_MR_CHANNEL(gEeprom.ScreenChannel) ? y_mr : y_vfo;
 
     if (x != 255 && y != 255)
-        UI_PrintStringBSmall((char[]){p, 0}, LCD_WIDTH + x, 0, y, 0);
+        UI_PrintStringSmallBold((char[]){p, 0}, LCD_WIDTH + x, 0, y, 0);
 }
 
 
@@ -453,7 +457,7 @@ void UI_DisplayMain(void)
 		uint8_t x = IS_MR_CHANNEL(gEeprom.ScreenChannel) ? x_mr : x_vfo;
 		uint8_t y = IS_MR_CHANNEL(gEeprom.ScreenChannel) ? y_mr : y_vfo;
 		if (x != 255 && y != 255 && dir[0] != 0)
-			UI_PrintStringBSmall(dir, LCD_WIDTH + x, 0, y, 0);
+			UI_PrintStringSmallBold(dir, LCD_WIDTH + x, 0, y, 0);
 			// ← МЕНЯЙ x_mr/x_vfo и y_mr/y_vfo
 	}
 
@@ -517,7 +521,7 @@ void UI_DisplayMain(void)
 
 		// Рисуем шаг
 		if (y != 255) {
-			UI_PrintStringBSmall(stepStr, LCD_WIDTH + base_x - (strlen(stepStr) * 3), 0, y, 0);
+			UI_PrintStringSmallBold(stepStr, LCD_WIDTH + base_x - (strlen(stepStr) * 3), 0, y, 0);
 		}
 		// ← Чтобы скрыть шаг в MR: base_x_mr = 255
 		// ← Чтобы скрыть шаг в VFO: base_x_vfo = 255
@@ -531,7 +535,7 @@ void UI_DisplayMain(void)
 		uint8_t x = IS_MR_CHANNEL(gEeprom.ScreenChannel) ? x_mr : x_vfo;
 		uint8_t y = IS_MR_CHANNEL(gEeprom.ScreenChannel) ? y_mr : y_vfo;
 		if (x != 255 && y != 255)
-			UI_PrintStringBSmall(sqlStr, LCD_WIDTH + x, 0, y, 0); // ← МЕНЯЙ x_mr/x_vfo и y_mr/y_vfo
+			UI_PrintStringSmallBold(sqlStr, LCD_WIDTH + x, 0, y, 0); // ← МЕНЯЙ x_mr/x_vfo и y_mr/y_vfo
 	}
 
 // ───────────────────── ПОЛОСА — полностью разделена по MR/VFO, как шумодав ─────────────────────
@@ -555,7 +559,7 @@ const char *bw = bwStr;
     if (y != 255)
     {
         // Центрирование по X (как раньше, но теперь с отдельным x)
-        UI_PrintStringBSmall(bw, LCD_WIDTH + x - (strlen(bw) * 3), 0, y, 0);
+        UI_PrintStringSmallBold(bw, LCD_WIDTH + x - (strlen(bw) * 3), 0, y, 0);
     }
 
     // ← МЕНЯЙ x_mr/x_vfo и y_mr/y_vfo отдельно для каждого режима
@@ -564,7 +568,15 @@ const char *bw = bwStr;
 
 			// SCR (если включён)!!!
 			if (gEeprom.VfoInfo.SCRAMBLING_TYPE > 0 && gSetting_ScrambleEnable)
-				UI_PrintStringSmall("SCR", LCD_WIDTH + 106, 0, line + 5, 0);
+			{
+				uint8_t x_vfo = 20;   uint8_t y_vfo = 32;
+				uint8_t x_mr  = 35;   uint8_t y_mr  = 25;
+
+				uint8_t scr_x = IS_MR_CHANNEL(gEeprom.ScreenChannel) ? x_mr : x_vfo;
+				uint8_t scr_y = IS_MR_CHANNEL(gEeprom.ScreenChannel) ? y_mr : y_vfo;
+
+				GUI_DisplaySmallest("SR", scr_x, scr_y, false, true);
+			}
 		}
 
 
@@ -732,7 +744,7 @@ static const vertical_dashed_t mr_vlines[] = {
 		GUI_DisplaySmallestDark("POW",  88, 40, false, false);
 		GUI_DisplaySmallestDark("MOD",  110, 40, false, false);
 
-		UI_PrintStringBSmall("TEST", 10, 30, 2, 0);  // обычный вызов
+		//UI_PrintStringSmall("TEST", 10, 30, 2, 0);  // обычный вызов
 		
 	
 	}
@@ -758,5 +770,9 @@ static const vertical_dashed_t mr_vlines[] = {
 		// АУДИОБАР — рисуем ПОСЛЕДНИМ, чтобы был поверх всех надписей
 	UI_DisplayAudioBar();
 	DisplayRSSIBar(gCurrentRSSI);
+
+	// ─── ПОПАП СОХРАНЕНИЯ В КАНАЛ ───────────────────────────────────────
+	if (gVfoPopupTimer > 0 && gVfoPopupText[0] != '\0')
+		UI_DisplayPopup(gVfoPopupText);
 
 }

@@ -81,16 +81,39 @@ void UI_DisplayWelcome(void)
 			//EEPROM_ReadBuffer(0x0EC0, WelcomeString1, 16);
 			strcpy(WelcomeString0, "CHECKMATE");
 #ifdef ENABLE_EEPROM_512K
-			strcpy(WelcomeString1, "512K EEPROM");
+			strcpy(WelcomeString1, "BIG EEPROM");
 #else 
-			strcpy(WelcomeString1, "8K EEPROM");
+			strcpy(WelcomeString1, "STOCK EEPROM");
 #endif
 		}
 
 		UI_PrintString(WelcomeString0, 0, 127, 0, 10);
 		UI_PrintString(WelcomeString1, 0, 127, 2, 10);
-		UI_PrintString(Version, 0, 127, 4,10);
-		GUI_DisplaySmallestDark("V.7.3", 55, 49, false, false);
+		UI_PrintString(Version, 0, 120, 4,10);
+		GUI_DisplaySmallestDark("V.7.4.6", 50, 49, false, false);
+
+		//UI_PrintStringSmallBold("V.7.4.4", 1, LCD_WIDTH - 1, 6, 0);
+
+
+		GUI_DisplaySmallest("OURO", 5, 49, false, true);
+		GUI_DisplaySmallest("MODE", 108, 49, false, true);
+
+
+
+		 //*******************ЛИНИИ-LINES***************** */
+        for (uint8_t y = 47; y <= 57; y += 2) {
+            UI_DrawLineBuffer(gFrameBuffer, 30, y, 30, y, 1); // Левая вертикальная пунктирная(X = 30)
+        }
+        for (uint8_t y = 47; y <= 57; y += 2) {
+            UI_DrawLineBuffer(gFrameBuffer, 94, y, 94, y, 1);  // Правая вертикальная пунктирная (X = 90)
+        }
+
+        for (uint8_t i = 0; i <= 127; i += 2) {
+            UI_DrawLineBuffer(gFrameBuffer, i, 15, i, 15, 1); // Hory X
+        }
+                for (uint8_t i = 0; i <= 127; i += 2) {
+            UI_DrawLineBuffer(gFrameBuffer, i, 30, i, 30, 1); // Hory X
+        }
 
 		ST7565_BlitStatusLine();  // blank status line
 		ST7565_BlitFullScreen();

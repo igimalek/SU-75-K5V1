@@ -1,4 +1,21 @@
-
+/* Original work Copyright 2023 Dual Tachyon
+ * https://github.com/DualTachyon
+ *
+ * Modified work Copyright 2024 kamilsss655
+ * https://github.com/kamilsss655
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     Unless required by applicable law or agreed to in writing, software
+ *     distributed under the License is distributed on an "AS IS" BASIS,
+ *     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *     See the License for the specific language governing permissions and
+ *     limitations under the License.
+ */
 
 #include <string.h>
 #include "app/fm.h"
@@ -466,20 +483,12 @@ void RADIO_SelectVfos(void)
 void RADIO_SetupRegisters(bool switchToForeground)
 {
 	GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
-
 	gEnableSpeaker = false;
-
 	BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
-
 	BK4819_FilterBandwidth_t Bandwidth = gTxVfo->CHANNEL_BANDWIDTH;
 	BK4819_SetFilterBandwidth(Bandwidth, gTxVfo->Modulation != MODULATION_AM);
-
-    //BK4819_SetFilterBandwidth(BK4819_FILTER_BW_WIDE, true);
-
 	BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, false);
-
 	BK4819_SetupPowerAmplifier(0, 0);
-
 	BK4819_ToggleGpioOut(BK4819_GPIO1_PIN29_PA_ENABLE, false);
 	int safety = 100; // max 100 interruptions
 	while (--safety > 0)
@@ -487,7 +496,7 @@ void RADIO_SetupRegisters(bool switchToForeground)
 		const uint16_t Status = BK4819_ReadRegister(BK4819_REG_0C);
 		if ((Status & 1u) == 0) // INTERRUPT REQUEST
 			break;
-
+		BK4819_WriteRegister(BK4819_REG_02, 0); //TEST KAMILS 
 		SYSTEM_DelayMs(1);
 	}
 	BK4819_WriteRegister(BK4819_REG_3F, 0);
@@ -513,9 +522,11 @@ void RADIO_SetupRegisters(bool switchToForeground)
     BK4819_WriteRegister(BK4819_REG_48,
     (11u << 12) |     // оставляем
     ( 0u << 10) |     // AF Rx Gain-1 = 0dB
-    (62u <<  4) |     // AF Rx Gain-2 = Max
-    (12u <<  0));     // AF DAC Gain = 12 (loud and clear)
-	BK4819_InitAGC(gTxVfo->Modulation);
+    //TEST KAMILS (62u <<  4) |     // AF Rx Gain-2 = Max
+    //TEST KAMILS (12u <<  0));     // AF DAC Gain = 12 (loud and clear)
+	(gEeprom.VOLUME_GAIN << 4) |     // AF Rx Gain-2 
+	(gEeprom.DAC_GAIN    << 0));     // AF DAC Gain (after Gain-1 and Gain-2)
+	//TEST KAMILS BK4819_InitAGC(gTxVfo->Modulation);
 	
 	uint16_t InterruptMask = BK4819_REG_3F_SQUELCH_FOUND | BK4819_REG_3F_SQUELCH_LOST;
 
@@ -578,12 +589,12 @@ void RADIO_SetupRegisters(bool switchToForeground)
 	if (switchToForeground)
 		FUNCTION_Select(FUNCTION_FOREGROUND);
 
-	BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, false);
 
-	// Специальные настройки для приёма SATCOM 225–400 МГц:
-	// фиксированный максимальный gain, AFC включён, AF усиление максимальное.
-	if (BK4819_IsSatcomFrequency(Frequency))
-		BK4819_InitSatcom();
+    //TEST KAMILS BK4819_WriteRegister(0x13, 0xB3A8);  // LNA сток
+    //TEST KAMILS BK4819_WriteRegister(0x10, 0xF3A8);  // Mixer сток
+    //TEST KAMILS BK4819_WriteRegister(0x12, 0xB3A8);  // аттенюатор авто/ON
+    //TEST KAMILS BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, false);
+    //TEST KAMILS BK4819_WriteRegister(BK4819_REG_48, 0xB3A8);
 
 }
 
@@ -664,7 +675,7 @@ void RADIO_SetModulation(ModulationMode_t modulation)
 
 	BK4819_SetAF(mod);
 	BK4819_SetRegValue(afDacGainRegSpec, 0xF);
-	//BK4819_WriteRegister(BK4819_REG_3D, modulation == MODULATION_SSB ? 0 : 0x2AAB);
+	BK4819_WriteRegister(BK4819_REG_3D, modulation == MODULATION_SSB ? 0 : 0x2AAB); //TEST KAMILS 
 	BK4819_SetRegValue(afcDisableRegSpec, modulation != MODULATION_FM);
 }
 

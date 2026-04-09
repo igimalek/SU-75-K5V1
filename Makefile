@@ -13,10 +13,10 @@ ENABLE_LTO                    := 1
 # ---- STOCK QUANSHENG FERATURES ----
 ENABLE_UART                   := 1
 ENABLE_FMRADIO                := 1
-ENABLE_TX1750                 := 1
+ENABLE_TX1750                 := 0
 # ---- CUSTOM MODS ----
 ENABLE_BIG_FREQ                         := 1
-ENABLE_SMALL_BOLD                       := 1
+ENABLE_SMALL_BOLD                       := 0
 ENABLE_TX_WHEN_AM                       := 0
 ENABLE_F_CAL_MENU                       := 0
 ENABLE_SHOW_CHARGE_LEVEL                := 0
@@ -30,21 +30,13 @@ ENABLE_SPECTRUM                         := 1
 ENABLE_BYP_RAW_DEMODULATORS             := 0
 ENABLE_BLMIN_TMP_OFF                    := 0
 ENABLE_SCANNER							:= 1
-ENABLE_FR_BAND							:= 0
-ENABLE_BR_BAND							:= 0
-ENABLE_PL_BAND							:= 0
-ENABLE_RO_BAND							:= 0
-ENABLE_KO_BAND							:= 0
-ENABLE_CZ_BAND							:= 0
-ENABLE_TU_BAND							:= 0
-ENABLE_RU_BAND							:= 0
-ENABLE_IN_BAND							:= 0
-ENABLE_FI_BAND							:= 0
+ENABLE_FULL_BAND						:= 1
 ENABLE_SCREENSHOT		  				:= 0
-ENABLE_SCANLIST_SHOW_DETAIL		   		:= 1
-ENABLE_EEPROM_512K				   		:= 0
+ENABLE_SCANLIST_SHOW_DETAIL		   		:= 0
+ENABLE_EEPROM_512K				   		:= 1
 ENABLE_4732								:= 0
 ENABLE_DEV								:= 0
+ENABLE_SPECTRUM_LINES					:= 1
 
 #############################################################
 
@@ -313,39 +305,8 @@ endif
 ifeq ($(ENABLE_SCANNER),1)
 	CFLAGS  += -DENABLE_SCANNER
 endif
-ifeq ($(ENABLE_FR_BAND),1)
-	CFLAGS  += -DENABLE_FR_BAND
-endif
-ifeq ($(ENABLE_BR_BAND),1)
-	CFLAGS  += -DENABLE_BR_BAND
-endif
-ifeq ($(ENABLE_PL_BAND),1)
-	CFLAGS  += -DENABLE_PL_BAND
-endif
-ifeq ($(ENABLE_RO_BAND),1)
-	CFLAGS  += -DENABLE_RO_BAND
-endif
-ifeq ($(ENABLE_KO_BAND),1)
-	CFLAGS  += -DENABLE_KO_BAND
-endif
-ifeq ($(ENABLE_CZ_BAND),1)
-	CFLAGS  += -DENABLE_CZ_BAND
-endif
-
-ifeq ($(ENABLE_TU_BAND),1)
-	CFLAGS  += -DENABLE_TU_BAND
-endif
-
-ifeq ($(ENABLE_RU_BAND),1)
-	CFLAGS  += -DENABLE_RU_BAND
-endif
-
-ifeq ($(ENABLE_IN_BAND),1)
-	CFLAGS  += -DENABLE_IN_BAND
-endif
-
-ifeq ($(ENABLE_FI_BAND),1)
-	CFLAGS  += -DENABLE_FI_BAND
+ifeq ($(ENABLE_FULL_BAND),1)
+	CFLAGS  += -DENABLE_FULL_BAND
 endif
 
 ifeq ($(ENABLE_SCREENSHOT),1)
@@ -365,6 +326,10 @@ ifeq ($(ENABLE_4732),1)
 endif
 ifeq ($(ENABLE_DEV),1)
 	CFLAGS  += -DENABLE_DEV
+endif
+
+ifeq ($(ENABLE_SPECTRUM_LINES),1)
+	CFLAGS  += -DENABLE_SPECTRUM_LINES
 endif
 
 LDFLAGS =

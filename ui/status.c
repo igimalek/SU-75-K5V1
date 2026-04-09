@@ -45,6 +45,32 @@ void UI_DisplayStatus()
 
 	memset(gStatusLine, 0, sizeof(gStatusLine));
 
+	// === Battery voltage / percentage ===
+	
+	char s[8];
+	unsigned int space_needed;
+	unsigned int x2 = LCD_WIDTH - 3;
+	switch (gSetting_battery_text)
+	{
+		case 1: // voltage
+		{
+			const uint16_t voltage = (gBatteryVoltageAverage <= 999) ? gBatteryVoltageAverage : 999;
+			sprintf(s, "%u.%1uV", voltage / 100, (voltage % 100) / 10);
+			space_needed = 7 * strlen(s);
+			if (x2 >= space_needed)
+				UI_PrintStringSmallBoldBuffer(s, gStatusLine + x2 - space_needed);
+			break;
+		}
+		case 2: // percentage
+		{
+			sprintf(s, "%u%%", BATTERY_VoltsToPercent(gBatteryVoltageAverage));
+			space_needed = 7 * strlen(s);
+			if (x2 >= space_needed)
+				UI_PrintStringSmallBoldBuffer(s, gStatusLine + x2 - space_needed);
+			break;
+		}
+	}
+
 	// === ОТДЕЛЬНЫЕ ПОЗИЦИИ ДЛЯ КАЖДОГО ИНДИКАТОРА ===
 	const uint8_t POS_TX   = 0;    // начало "TX" при передаче
 	const uint8_t POS_RX   = 0;    // начало "RX" при приёме
@@ -56,7 +82,7 @@ void UI_DisplayStatus()
 		// === Индикаторы TX / RX / PS — мелким шрифтом как у батареи (позиция по POS_...) ===
 	if (gCurrentFunction == FUNCTION_TRANSMIT)
 	{
-		UI_PrintStringBSmallBuffer("TX", gStatusLine + POS_TX);
+		UI_PrintStringSmallBoldBuffer("TX", gStatusLine + POS_TX);
 
 		sprintf(time_str, "%02u:%02u", txTimeSeconds / 60, txTimeSeconds % 60);
 		UI_PrintStringSmallBuffer(time_str, gStatusLine + TIME_POS_X);
@@ -65,14 +91,14 @@ void UI_DisplayStatus()
 	         gCurrentFunction == FUNCTION_MONITOR ||
 	         gCurrentFunction == FUNCTION_INCOMING)
 	{
-		UI_PrintStringBSmallBuffer("RX", gStatusLine + POS_RX);
+		UI_PrintStringSmallBoldBuffer("RX", gStatusLine + POS_RX);
 
 		sprintf(time_str, "%02u:%02u", rxTimeSeconds / 60, rxTimeSeconds % 60);
 		UI_PrintStringSmallBuffer(time_str, gStatusLine + TIME_POS_X);
 	}
 	else if (gCurrentFunction == FUNCTION_POWER_SAVE)
 	{
-		UI_PrintStringBSmallBuffer("PS", gStatusLine + POS_PS);
+		UI_PrintStringSmallBoldBuffer("PS", gStatusLine + POS_PS);
 	}
 
 		// === Индикатор функции фонарика при приеме "L" ===
@@ -179,56 +205,9 @@ gStatusLine[POS_B + 14] |= 0x0C;
                 start_x = LCD_WIDTH - 20 - space_needed;
             }
 
-            UI_PrintStringBSmallBuffer(meterStr, gStatusLine + start_x);
+            UI_PrintStringSmallBoldBuffer(meterStr, gStatusLine + start_x);
         }
     }
-	// === Battery voltage / percentage ===
-	{
-		char s[8];
-		unsigned int space_needed;
-		unsigned int x2 = LCD_WIDTH - 3;
-
-		switch (gSetting_battery_text)
-		{
-			case 1: // voltage
-			{
-				const uint16_t voltage = (gBatteryVoltageAverage <= 999) ? gBatteryVoltageAverage : 999;
-				sprintf(s, "%u.%02uV", voltage / 100, voltage % 100);
-				space_needed = 7 * strlen(s);
-				if (x2 >= space_needed)
-					UI_PrintStringBSmallBuffer(s, gStatusLine + x2 - space_needed);
-				break;
-			}
-			case 2: // percentage
-			{
-				sprintf(s, "%u%%", BATTERY_VoltsToPercent(gBatteryVoltageAverage));
-				space_needed = 7 * strlen(s);
-				if (x2 >= space_needed)
-					UI_PrintStringBSmallBuffer(s, gStatusLine + x2 - space_needed);
-				break;
-			}
-		}
-	}
-
-	/*/ === Вертикальные линии ===
-	uint8_t line_x[] = {0, 127};
-	uint8_t num_lines = sizeof(line_x) / sizeof(line_x[0]);
-	uint8_t dash_step = 2;
-
-	for (uint8_t i = 0; i < num_lines; i++) {
-		uint8_t px = line_x[i];
-		if (dash_step == 1) {
-			gStatusLine[px] = 0xFF;
-		} else {
-			uint8_t pattern = 0;
-			for (uint8_t bit = 0; bit < 8; bit += dash_step) {
-				pattern |= (1 << bit);
-			}
-			gStatusLine[px] |= pattern;
-		}
-	}*/
-
-	
 
 	ST7565_BlitStatusLine();
 }

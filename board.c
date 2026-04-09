@@ -560,7 +560,7 @@ void BOARD_EEPROM_Init(void)
 	EEPROM_ReadBuffer(0x0F40, Data, 8);
 	gSetting_F_LOCK            = (Data[0] < F_LOCK_LEN) ? Data[0] : F_UNLOCK_PMR;
 	gSetting_ScrambleEnable    = (Data[6] < 2) ? Data[6] : true;
-	gSetting_battery_text      = (((Data[7] >> 2) & 3u) <= 2) ? (Data[7] >> 2) & 3 : 2;
+	gSetting_battery_text      = 2;
 	gSetting_backlight_on_tx_rx = (Data[7] >> 6) & 3u;
 	// Read RxOffset setting
 	EEPROM_ReadBuffer(0x0EA0, Data, 4);
@@ -600,7 +600,7 @@ void BOARD_gMR_LoadChannels() {
 
 	for (i = MR_CHANNEL_FIRST; i <= MR_CHANNEL_LAST; i++)
 	{
-		freq_buf = BOARD_fetchChannelFrequency(i);
+		freq_buf = FetchChannelFrequency(i);
 
 		gMR_ChannelFrequencyAttributes[i].Frequency = RX_freq_check(freq_buf) == 0xFF ? 0 : freq_buf;
 	}
@@ -655,7 +655,7 @@ void BOARD_EEPROM_LoadCalibration(void)
 	}
 }
 
-uint32_t BOARD_fetchChannelFrequency(const uint16_t Channel)
+uint32_t FetchChannelFrequency(const uint16_t Channel)
 {
 	struct
 	{

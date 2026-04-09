@@ -34,14 +34,13 @@ void UI_DisplayFM(void)
 {
 	char String[16];
 
-	// Очистка экрана
 	memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
 
-	// === Текст "FM" большим шрифтом ===
+    // "FM" большим шрифтом слева
 	strcpy(String, "FM");
 	UI_PrintString(String, 25, 10, 2, 10);
 
-	// === Частота большим шрифтом ===
+    // Частота большим диджитал шрифтом
 	memset(String, 0, sizeof(String));
 	sprintf(String, "%3d.%d", gEeprom.FM_FrequencyPlaying / 10, gEeprom.FM_FrequencyPlaying % 10);
 	UI_DisplayFrequency(String, 55, 2, true);
@@ -54,44 +53,51 @@ void UI_DisplayFM(void)
 
 	// === ДВЕ ГОРИЗОНТАЛЬНЫЕ ЛИНИИ ===
 	// Верхняя (Y = 16)
-	for (uint8_t x = 0; x < 128; x += step) {
-		uint8_t y = 16;
+	for (uint8_t x = 3; x < 125; x += step) {
+		uint8_t y = 15;
 		if (y < 8) gStatusLine[x] |= (1u << y);
 		else gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
 	}
 
 	// Нижняя (Y = 48)
-	for (uint8_t x = 8; x < 125; x += step) {
-		uint8_t y = 48;
+	for (uint8_t x = 3; x < 125; x += step) {
+		uint8_t y = 54;
 		if (y < 8) gStatusLine[x] |= (1u << y);
 		else gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
 	}
 
-	// Нижняя (Y = 58)
-	for (uint8_t x = 2; x < 126; x += step) {
-		uint8_t y = 58;
-		if (y < 8) gStatusLine[x] |= (1u << y);
-		else gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
-	}
+
 
 	// === ДВЕ ВЕРТИКАЛЬНЫЕ ЛИНИИ ===
 	// Левая (X = 14, Y от 10 до 54)
-	for (uint8_t y = 10; y <= 52; y += step) {
-		uint8_t x = 14;
+	for (uint8_t y = 15; y <= 51; y += step) {
+		uint8_t x = 3;
 		if (y < 8) gStatusLine[x] |= (1u << y);
 		else gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
 	}
-
-	// Правая (X = 113, Y от 20 до 40)
-	for (uint8_t y = 20; y <= 50; y += step) {
-		uint8_t x = 120;
-		if (y < 8) gStatusLine[x] |= (1u << y);
-		else gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
+    // Вертикальная правая (X=120, Y 20..50)
+    for (uint8_t y = 15; y <= 51; y += 2) {
+        uint8_t x = 123;
+        gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
 	}
-	// === Надписи мелким дарк шрифтом ===
-	GUI_DisplaySmallestDark("BROADCAST", 6, 6, false, true);
-	GUI_DisplaySmallestDark("STATION", 66, 38, false, true);
 
+ //GUI_DisplaySmallestDark("FIND:", 1, 6, false, true);
+	// Режим поиска: AUTO или MANU — сразу после BROADCAST
+    if (gFM_ManualMode)
+        GUI_DisplaySmallestDark("STEP", 21, 5, false, true);
+    else
+        GUI_DisplaySmallestDark("AUTO", 21, 5, false, true);
+
+//MUTE / ON AIR
+    if (gFM_Mute) {
+        // Если звук выключен
+        GUI_DisplaySmallestDark("SILENT", 69, 5, false, true);
+    } else {
+        // Если звук включен (активный эфир)
+        GUI_DisplaySmallestDark("ON AIR", 69, 5, false, true);
+    }
+
+    GUI_DisplaySmallestDark("KA-50 STATION", 26, 44, false, true);
 
 	ST7565_BlitFullScreen();
 }

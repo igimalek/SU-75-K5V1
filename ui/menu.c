@@ -45,8 +45,6 @@ const t_menu_item MenuList[] =
 	{"Bandw",   MENU_W_N           },
 	{"Demodu",  MENU_AM            },
 	{"Roger",   MENU_ROGER         },
-	{"ScraEn",  MENU_SCREN         }, 
-	{"Scramb",  MENU_SCR           },
 	{"ScanLi",  MENU_S_LIST        }, 
 	{"TxTOut",  MENU_TOT           },
 	{"Mic",     MENU_MIC           },	
@@ -62,22 +60,22 @@ const t_menu_item MenuList[] =
 	{"TxODir",  MENU_SFT_D         },
 	{"TxOffs",  MENU_OFFSET        },
 	{"RxOffs",  MENU_RX_OFFSET     },
-	{"BatSav",  MENU_SAVE          },
-	{"ChSave",  MENU_MEM_CH        },
-	// hidden menu items from here on
-	// enabled if pressing 0 at power-on
 	{"F1Shrt",  MENU_F1SHRT        },
 	{"F1Long",  MENU_F1LONG        },
 	{"F2Shrt",  MENU_F2SHRT        },
 	{"F2Long",  MENU_F2LONG        },
+	{"BatSav",  MENU_SAVE          },
 	{"BatCal",  MENU_BATCAL        },
 	{"BatTyp",  MENU_BATTYP        },
-	{"TxPwr",   MENU_TXP           },
 	{"BatVol",  MENU_VOL           },
-	{"POnMsg",  MENU_PONMSG        },
 	{"BatTxt",  MENU_BAT_TXT       },	
+	{"TxPwr",   MENU_TXP           },
+	{"POnMsg",  MENU_PONMSG        },
+	{"ChSave",  MENU_MEM_CH        },
 	{"ChDele",  MENU_DEL_CH        },
 	{"ChName",  MENU_MEM_NAME      },	
+	{"ScraEn",  MENU_SCREN         }, 
+	{"Scramb",  MENU_SCR           },
 	{"Reset",   MENU_RESET         },
 	{"F Lock",  MENU_F_LOCK        },
 	{"SatCom",  MENU_SATCOM        },  // ← новая строка
@@ -313,7 +311,7 @@ void UI_DisplayMenu(void)
 
 			// draw the menu index number/count НОМЕРА ПУНКТОВ
 			sprintf(String, "%2u.%u", 1 + gMenuCursor, gMenuListCount);
-			UI_PrintStringBSmall(String, 2, 0, 6,0);
+			UI_PrintStringSmallBold(String, 2, 0, 6,0);
 		}
 
 
@@ -464,7 +462,7 @@ void UI_DisplayMenu(void)
 				UI_PrintString(String, menu_item_x1, menu_item_x2, 2, 8);
 				if (!gAskForConfirmation)
 				{	// show the frequency so that the user knows the Channels frequency
-					const uint32_t frequency = BOARD_fetchChannelFrequency(gSubMenuSelection);
+					const uint32_t frequency = FetchChannelFrequency(gSubMenuSelection);
 					if (frequency == 0) {strcpy(String, "----");}
                     else sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
 					UI_PrintString(String, menu_item_x1, menu_item_x2, 4, 8);
@@ -477,7 +475,7 @@ void UI_DisplayMenu(void)
 				UI_PrintString(String, menu_item_x1, menu_item_x2, 0, 8);
 
 
-				const uint32_t frequency = BOARD_fetchChannelFrequency(gSubMenuSelection);
+				const uint32_t frequency = FetchChannelFrequency(gSubMenuSelection);
 
 				if (!gIsInSubMenu || edit_index < 0)
 				{	// show the Channel name
@@ -659,77 +657,19 @@ void UI_DisplayMenu(void)
 	}
 
 
+//*******************ЛИНИИ-LINES***************** */
 
+        for (uint8_t y = 2; y <= 57; y += 2) {
+            UI_DrawLineBuffer(gFrameBuffer, 49, y, 49, y, 1); // Левая вертикальная пунктирная(X = 30)
+        }
+    
+        for (uint8_t i = 0; i <= 127; i += 2) {
+            UI_DrawLineBuffer(gFrameBuffer, i, 0, i, 0, 1); // Hory X
+        }
+                for (uint8_t i = 0; i <= 47; i += 2) {
+            UI_DrawLineBuffer(gFrameBuffer, i, 46, i, 46, 1); // Hory X
+        }
 
-//   НЕСКОЛЬКО КОРОТКИХ ПУНКТИРНЫХ ЛИНИЙ ГОРИЗОНТ — ПОЛНАЯ НАСТРОЙКА КАЖДОЙ!
-// ────────────────────────────────────────────────────────────────
-typedef struct {
-	uint8_t y;        // высота (0..63)
-	uint8_t x_start;  // отступ слева
-	uint8_t x_end;    // отступ справа
-	uint8_t step;     // шаг пунктира: 1 = сплошная, 2 = •◦, 3 = •◦◦, 4 = •◦◦◦ и т.д.
-} dashed_line_t;
-
-// ─────── ТУТ НАСТРАИВАЙ СКОЛЬКО УГОДНО ЛИНИЙ ───────
-static const dashed_line_t dashed_lines[] = {
-	{ 8,  0, 127, 2 },   // линия 1: частый пунктир
-	{ 52,  0, 47, 2 },   // линия 2: сплошная (step = 1)
-	// хочешь ещё? — добавляй:
-	// { 24,  15, 113, 3 },
-	// { 40,   8, 120, 5 },
-};
-
-const uint8_t num_lines = ARRAY_SIZE(dashed_lines);
-
-// Рисуем все линии
-for (uint8_t i = 0; i < num_lines; i++)
-{
-	const dashed_line_t *l = &dashed_lines[i];
-	const uint8_t y = l->y;
-
-	for (uint8_t x = l->x_start; x <= l->x_end; x += l->step)
-	{
-		if (y < 8)
-			gStatusLine[x] |= (1u << y);                                         // статусная строка
-		else
-			gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));              // основной экран
-	}
-}
-// ────────────────────────────────────────────────────────────────
-//   НЕСКОЛЬКО ВЕРТИКАЛЬНЫХ ПУНКТИРНЫХ ЛИНИЙ — ПОЛНАЯ НАСТРОЙКА КАЖДОЙ!
-// ────────────────────────────────────────────────────────────────
-typedef struct {
-	uint8_t x;        // позиция по горизонтали (0..127)
-	uint8_t y_start;  // отступ сверху
-	uint8_t y_end;    // отступ снизу
-	uint8_t step;     // шаг пунктира: 1 = сплошная, 2 = •◦, 3 = •◦◦ и т.д.
-} vertical_line_t;
-
-// ─────── НАСТРАИВАЙ СКОЛЬКО УГОДНО ВЕРТИКАЛЬНЫХ ЛИНИЙ ───────
-static const vertical_line_t vertical_lines[] = {
-	{  49,  10, 64, 2 },   // левая линия — частый пунктир
-	// добавляй свои:
-	// { 30, 15, 50, 4 },
-	// { 90, 12, 52, 1 },
-};
-
-const uint8_t num_vlines = ARRAY_SIZE(vertical_lines);
-
-// Рисуем все вертикальные линии
-for (uint8_t i = 0; i < num_vlines; i++)
-{
-	const vertical_line_t *l = &vertical_lines[i];
-	const uint8_t x = l->x;
-
-	for (uint8_t y = l->y_start; y <= l->y_end; y += l->step)
-	{
-		if (y < 8)
-			gStatusLine[x] |= (1u << y);
-		else
-			gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
-	}
-}
-// ────────────────────────────────────────────────────────────────
 	ST7565_BlitFullScreen();
 }
 

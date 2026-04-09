@@ -103,8 +103,8 @@ void UI_PrintStringSmall(const char *pString, uint8_t Start, uint8_t End, uint8_
 
     uint8_t *pFb = gFrameBuffer[Line] + start_pos;
     
-    // remplir le fond
-    if (background) memset(pFb, 0xFF, 127);
+    // remplir le fond — 0x7F: bits 0-6 seulement (hauteur du font), bit 7 jamais allumé
+    if (background == 1) memset(gFrameBuffer[Line], 0x7F, LCD_WIDTH);
     
     // position courante
     uint8_t *cursor = pFb;
@@ -126,8 +126,9 @@ void UI_PrintStringSmall(const char *pString, uint8_t Start, uint8_t End, uint8_
                         memmove(dst, gFontSmall[index], char_width_used);
                         break;
                     case 1:
+                    case 2:  // background=2: invert glyphs, no memset (background already filled)
                         for (unsigned int c = 0; c < char_width_used; c++)
-                            dst[c] = ~gFontSmall[index][c];
+                            dst[c] = ~gFontSmall[index][c] & 0x7F;
                         break;
                 }
 
@@ -141,7 +142,7 @@ void UI_PrintStringSmall(const char *pString, uint8_t Start, uint8_t End, uint8_
     }
 }
 
-void UI_PrintStringBSmall(const char *pString, uint8_t Start, uint8_t End, uint8_t Line, uint8_t background)
+void UI_PrintStringSmallBold(const char *pString, uint8_t Start, uint8_t End, uint8_t Line, uint8_t background)
 {
     const size_t Length = strlen(pString);
 
@@ -158,8 +159,9 @@ void UI_PrintStringBSmall(const char *pString, uint8_t Start, uint8_t End, uint8
 
     uint8_t *pFb = gFrameBuffer[Line] + start_pos;
     
-    // remplir le fond
-    if (background) memset(pFb, 0xFF, 127);
+    // remplir le fond -- 0x7F: bits 0-6 seulement (hauteur du font), bit 7 jamais allume
+    if (background == 1) memset(gFrameBuffer[Line], 0x7F, LCD_WIDTH);
+    // background=2: no memset, invert glyphs only (background already filled by caller)
     
     // position courante
     uint8_t *cursor = pFb;
@@ -169,20 +171,21 @@ void UI_PrintStringBSmall(const char *pString, uint8_t Start, uint8_t End, uint8
         if (pString[i] > ' ')
         {
             const unsigned int index = (unsigned int)pString[i] - ' ' - 1;
-            if (index < ARRAY_SIZE(gFontBSmall))
+            if (index < ARRAY_SIZE(gFontSmallBold))
             {
                 unsigned int char_width_used = char_width;
-                while (char_width_used > 0 && gFontBSmall[index][char_width_used - 1] == 0)
+                while (char_width_used > 0 && gFontSmallBold[index][char_width_used - 1] == 0)
                     char_width_used--;
 
                 uint8_t *dst = cursor;
                 switch (background) {
                     case 0:
-                        memmove(dst, gFontBSmall[index], char_width_used);
+                        memmove(dst, gFontSmallBold[index], char_width_used);
                         break;
                     case 1:
+                    case 2:  // invert glyphs, no memset
                         for (unsigned int c = 0; c < char_width_used; c++)
-                            dst[c] = ~gFontBSmall[index][c];
+                            dst[c] = ~gFontSmallBold[index][c] & 0x7F;
                         break;
                 }
 
@@ -213,18 +216,18 @@ void UI_PrintStringSmallBuffer(const char *pString, uint8_t *buffer)
 	}
 }
 
-void UI_PrintStringBSmallBuffer(const char *pString, uint8_t *buffer)
+void UI_PrintStringSmallBoldBuffer(const char *pString, uint8_t *buffer)
 {
 	size_t i;
-	const unsigned int char_width   = ARRAY_SIZE(gFontBSmall[0]);
+	const unsigned int char_width   = ARRAY_SIZE(gFontSmallBold[0]);
 	const unsigned int char_spacing = char_width + 1;
 	for (i = 0; i < strlen(pString); i++)
 	{
 		if (pString[i] > ' ')
 		{
 			const unsigned int index = (unsigned int)pString[i] - ' ' - 1;
-			if (index < ARRAY_SIZE(gFontBSmall))
-				memmove(buffer + (i * char_spacing) + 1, &gFontBSmall[index], char_width);
+			if (index < ARRAY_SIZE(gFontSmallBold))
+				memmove(buffer + (i * char_spacing) + 1, &gFontSmallBold[index], char_width);
 		}
 	}
 }
